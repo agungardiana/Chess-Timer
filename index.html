@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chess Timer — ADW</title>
+<style>
+:root{color-scheme:dark;--bg:#10141c;--panel:#1b2330;--muted:#aab5c5;--accent:#78d5a3;--warn:#ffc857;--danger:#ff6565}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#243044,#10141c 60%);color:#f4f7fb;font-family:system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh;display:grid;place-items:center;padding:18px}
+.app{width:min(760px,100%);background:#171e29;border:1px solid #344154;border-radius:24px;padding:clamp(16px,4vw,30px);box-shadow:0 22px 70px #0007}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px}h1{font-size:clamp(1.25rem,4vw,2rem);margin:0}header small{color:var(--muted)}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}.field{background:#222c3a;border:1px solid #39485c;border-radius:12px;padding:10px 12px;color:#fff}.field label{font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px}.field input{width:68px;background:transparent;border:0;color:white;font-size:1rem;outline:none}
+.clocks{display:grid;gap:12px}.clock{width:100%;border:2px solid #3a4658;background:#222c3a;color:#fff;border-radius:20px;padding:20px 14px;text-align:center;cursor:pointer;transition:.15s;min-height:145px}.clock.active{border-color:var(--accent);background:#1b3b32;box-shadow:0 0 0 3px #78d5a322}.clock.low{border-color:var(--warn);color:var(--warn)}.clock.expired{border-color:var(--danger);background:#4b2026;color:var(--danger);animation:pulse 1s infinite}.player{font-size:.9rem;color:#c0cad7;letter-spacing:.08em;text-transform:uppercase}.time{font-variant-numeric:tabular-nums;font-size:clamp(2.8rem,11vw,5.5rem);font-weight:750;line-height:1.15;margin:7px 0}.turn{font-size:.8rem;color:var(--muted)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.actions button{flex:1;min-width:115px;border:0;border-radius:12px;padding:13px 15px;font-size:1rem;font-weight:700;cursor:pointer}.primary{background:var(--accent);color:#10251b}.secondary{background:#303b4b;color:#fff}.danger{background:#512b32;color:#ffb7b7}.note{margin-top:15px;color:var(--muted);font-size:.85rem;line-height:1.5}.status{text-align:center;margin-top:12px;font-weight:600;min-height:1.4em}.status.warning{color:var(--warn)}.status.error{color:var(--danger)}
+@keyframes pulse{50%{box-shadow:0 0 0 5px #ff656533}}
+@media(min-width:600px){.clocks{grid-template-columns:1fr 1fr}.clock{min-height:210px;padding:28px 14px}.bottom{transform:rotate(180deg)}.bottom .player,.bottom .time,.bottom .turn{transform:rotate(180deg)}}
+</style>
+</head>
+<body>
+<main class="app">
+<header><div><h1>♟ Chess Timer</h1><small>Jam catur dua pemain</small></div><small id="modeLabel">Siap bermain</small></header>
+<section class="controls" aria-label="Identitas sesi">
+ <div class="field" style="flex:1;min-width:220px"><label for="sessionTitle">Nama pemain / judul sesi</label><input id="sessionTitle" type="text" maxlength="100" placeholder="Contoh: Final klub — Andi vs Budi" style="width:100%"></div>
+ <div class="field" style="flex:1;min-width:220px"><label for="sessionDescription">Keterangan lengkap</label><input id="sessionDescription" type="text" maxlength="1000" placeholder="Catatan pertandingan..." style="width:100%"></div>
+</section>
+<section class="controls" aria-label="Pengaturan waktu">
+ <div class="field"><label for="minutes">Menit per pemain</label><input id="minutes" type="number" min="1" max="180" value="10"></div>
+ <div class="field"><label for="seconds">Detik tambahan</label><input id="seconds" type="number" min="0" max="59" value="0"></div>
+ <div class="field"><label for="increment">Increment (detik)</label><input id="increment" type="number" min="0" max="60" value="0"></div>
+</section>
+<section class="clocks">
+ <button class="clock bottom" id="blackClock" aria-label="Jam pemain hitam"><div class="player">Pemain 2 · Hitam</div><div class="time" id="blackTime">10:00</div><div class="turn" id="blackTurn">Menunggu giliran</div></button>
+ <button class="clock" id="whiteClock" aria-label="Jam pemain putih"><div class="player">Pemain 1 · Putih</div><div class="time" id="whiteTime">10:00</div><div class="turn" id="whiteTurn">Siap</div></button>
+</section>
+<div class="actions">
+ <button class="primary" id="startBtn">Mulai</button>
+ <button class="secondary" id="flipBtn">Balik POV</button>
+ <button class="danger" id="resetBtn">Reset</button>
+</div>
+<div class="status" id="status" role="status">Atur waktu, lalu tekan Mulai.</div>
+<p class="note">Setelah selesai melangkah, tekan <b>kotak waktu milik Anda sendiri</b> untuk menjalankan jam lawan. Kotak waktu yang sedang berjalan akan disorot. Alarm berbunyi saat tersisa 1 menit, peringatan tiap detik pada 10–1 detik, dan alarm akhir saat waktu habis. Pastikan browser tidak dibisukan; suara diaktifkan setelah tombol Mulai ditekan.</p>
+<section class="history">
+ <h2 style="font-size:1.15rem;margin:22px 0 10px">Riwayat sesi</h2>
+ <div id="historyList" class="note">Belum ada riwayat sesi.</div>
+ <button class="secondary" id="clearHistory" style="border:0;border-radius:10px;padding:10px 14px;cursor:pointer;margin-top:10px">Hapus riwayat</button>
+</section>
+</main>
+<script>
+(()=> {
+ const $=id=>document.getElementById(id);
+ let initial=600, remaining=[600,600], active=-1, running=false, ended=false, last=0, interval=null, warnedMinute=[false,false], warnedSeconds=[...Array(2)].map(()=>new Set()), audioCtx=null, flip=false, sessionMeta=null, sessionStartedAt=null, historySaved=false;
+ const fmt=n=>{n=Math.max(0,Math.ceil(n));return `${Math.floor(n/60)}:${String(n%60).padStart(2,'0')}`};
+ function sound(freq=880,duration=.18,kind='sine'){try{if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=kind;o.frequency.value=freq;g.gain.setValueAtTime(.0001,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.22,audioCtx.currentTime+.015);g.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+duration);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+duration+.02)}catch(e){}}
+ function alarmEnd(){sound(440,.25);setTimeout(()=>sound(330,.25),300);setTimeout(()=>sound(220,.5),600)}
+ function getHistory(){try{return JSON.parse(localStorage.getItem('chessTimerHistory')||'[]')}catch(e){return []}}
+ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+ function renderHistory(){
+   const items=getHistory(), box=$('historyList');
+   if(!items.length){box.textContent='Belum ada riwayat sesi.';return}
+   box.innerHTML=items.map((x,i)=>`<article style="background:#222c3a;border:1px solid #39485c;border-radius:12px;padding:12px;margin:9px 0"><b>${esc(x.title||'Sesi catur')}</b><div style="color:#aab5c5;font-size:.8rem">${esc(x.date)} · ${esc(x.result)}</div><div style="margin-top:6px">${esc(x.description||'Tanpa keterangan')}</div><div style="color:#aab5c5;font-size:.8rem;margin-top:6px">Waktu: ${esc(x.setting)} · Increment: ${esc(x.increment)} detik · Durasi: ${esc(x.duration)} · Sisa Putih: ${esc(x.whiteRemaining)} · Sisa Hitam: ${esc(x.blackRemaining)}</div></article>`).join('');
+ }
+ function saveHistory(result){
+   if(!sessionMeta||historySaved)return;
+   const elapsed=sessionStartedAt?Math.max(0,Math.floor((Date.now()-sessionStartedAt)/1000)):0;
+   const {base,inc}=readSettings();
+   const item={title:sessionMeta.title,description:sessionMeta.description,date:new Date().toLocaleString('id-ID'),result,setting:fmt(base),increment:inc,duration:fmt(elapsed),whiteRemaining:fmt(remaining[0]),blackRemaining:fmt(remaining[1])};
+   const items=getHistory();items.unshift(item);localStorage.setItem('chessTimerHistory',JSON.stringify(items.slice(0,100)));historySaved=true;renderHistory();
+ }
+ function readSettings(){const m=Math.max(1,Math.min(180,Number($('minutes').value)||10)),s=Math.max(0,Math.min(59,Number($('seconds').value)||0)),inc=Math.max(0,Math.min(60,Number($('increment').value)||0));return {base:m*60+s,inc}}
+ function update(){
+   $('whiteTime').textContent=fmt(remaining[0]);$('blackTime').textContent=fmt(remaining[1]);
+   $('whiteClock').classList.toggle('active',running&&active===0);$('blackClock').classList.toggle('active',running&&active===1);
+   [0,1].forEach(i=>{const el=$(i?'blackClock':'whiteClock');el.classList.toggle('low',remaining[i]<=60&&remaining[i]>10);el.classList.toggle('expired',remaining[i]<=0);$(i?'blackTurn':'whiteTurn').textContent=ended?(remaining[i]<=0?'Waktu habis':'Permainan selesai'):(active===i?'Jam berjalan':running?'Menunggu giliran': 'Siap');});
+   $('startBtn').disabled=running&&!ended;
+   $('startBtn').textContent=ended?'Selesai':'Mulai';
+   $('modeLabel').textContent=running?'Sedang bermain':ended?'Waktu habis':'Siap bermain';
+ }
+ function tick(){
+   if(!running||ended)return;
+   const now=performance.now(),delta=(now-last)/1000;last=now;
+   remaining[active]-=delta;
+   const left=Math.max(0,Math.ceil(remaining[active]));
+   if(remaining[active]<=60&&!warnedMinute[active]){warnedMinute[active]=true;sound(720,.35,'triangle');$('status').textContent='⏰ Waktu tersisa 1 menit!';$('status').className='status warning'}
+   if(left<=10&&left>=1&&!warnedSeconds[active].has(left)){warnedSeconds[active].add(left);sound(left<=3?1050:850,.12,'square');$('status').textContent=`⚠️ Sisa waktu ${left} detik!`;$('status').className='status warning'}
+   if(remaining[active]<=0){remaining[active]=0;running=false;ended=true;alarmEnd();const result=`Waktu ${active===0?'Pemain 1 (Putih)':'Pemain 2 (Hitam)'} habis`;saveHistory(result);$('status').textContent=result+'!';$('status').className='status error'}
+   update();
+ }
+ function start(){const {base}=readSettings();if(!running&&!ended&&active===-1){initial=base;remaining=[base,base];active=0;running=true;sessionMeta={title:$('sessionTitle').value.trim()||'Sesi catur',description:$('sessionDescription').value.trim()};sessionStartedAt=Date.now();historySaved=false;last=performance.now();$('status').textContent='Putih mulai. Setelah melangkah, tekan kotak waktu Putih untuk menyerahkan giliran.';$('status').className='status';sound(660,.12);if(interval)clearInterval(interval);interval=setInterval(tick,80);update()}}
+ function switchTurn(player){if(!running||ended||player!==active)return;tick();if(ended)return;remaining[active]+=readSettings().inc;active=1-active;last=performance.now();$('status').textContent=`Giliran ${active===0?'Putih':'Hitam'} — jam berjalan.`;$('status').className='status';sound(560,.1);update()}
+ function reset(){if(running&&!ended)saveHistory('Sesi di-reset / dihentikan sebelum waktu habis');running=false;ended=false;active=-1;sessionMeta=null;sessionStartedAt=null;historySaved=false;const {base}=readSettings();initial=base;remaining=[base,base];warnedMinute=[false,false];warnedSeconds=[new Set(),new Set()];if(interval){clearInterval(interval);interval=null}$('status').textContent='Atur waktu, lalu tekan Mulai.';$('status').className='status';update()}
+ $('startBtn').addEventListener('click',()=>{if(ended){reset();return}start()});
+ $('whiteClock').addEventListener('click',()=>switchTurn(0));
+ $('blackClock').addEventListener('click',()=>switchTurn(1));
+ $('resetBtn').addEventListener('click',reset);
+ $('clearHistory').addEventListener('click',()=>{if(confirm('Hapus semua riwayat sesi?')){localStorage.removeItem('chessTimerHistory');renderHistory()}});
+ $('flipBtn').addEventListener('click',()=>{flip=!flip;$('whiteClock').classList.toggle('bottom',flip);$('blackClock').classList.toggle('bottom',!flip);$('flipBtn').textContent=flip?'POV: Putih di atas':'Balik POV';});
+ ['minutes','seconds','increment'].forEach(id=>$(id).addEventListener('change',()=>{if(!running&&!ended)reset()}));
+ renderHistory();
+ update();
+})();
+</script>
+</body>
+</html>
